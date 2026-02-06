@@ -66,15 +66,17 @@ jobs:
       # CRITICAL FIX: Use PM2 instead of 'npm start'
       - name: Deploy application
         run: |
-          echo "Installing PM2 for background process management..."
+          echo "Installing PM2..."
           npm install -g pm2
 
-          echo "Stopping old instances to avoid port conflicts..."
-          # This command stops the app if it's already running, but doesn't fail if it's not
-          pm2 stop "ostad-app" || echo "No previous instance running."
+          echo "Stopping old instances..."
+          # FIX: We remove '||' and use standard PowerShell syntax.
+          # We add '; $LASTEXITCODE = 0' to ensure the pipeline doesn't crash 
+          # if the app is not currently running.
+          pm2 stop "ostad-app"; $LASTEXITCODE = 0
 
-          echo "Starting application in the background..."
-          # This starts the server and immediately exits, allowing the job to finish Green
+          echo "Starting application..."
+          # This will start the app and let the pipeline finish successfully
           pm2 start src/server.js --name "ostad-app"
 
           echo "Deployment Complete!"
