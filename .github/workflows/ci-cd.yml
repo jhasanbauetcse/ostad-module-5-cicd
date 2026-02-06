@@ -6,6 +6,7 @@ on:
       - main
 
 jobs:
+  # JOB 1: TEST
   test:
     name: Test Application
     runs-on: ubuntu-latest
@@ -23,6 +24,7 @@ jobs:
         run: npm install
 
       - name: Run tests
+        # We save output to a file to prove testing happened
         run: |
           echo "Running tests..." > test-results.txt
           npm test >> test-results.txt || echo "Tests completed" >> test-results.txt
@@ -33,9 +35,11 @@ jobs:
           name: test-results
           path: test-results.txt
 
+  # JOB 2: DEPLOY (Self-Hosted)
   deploy:
     name: Deploy Application
     needs: test
+    # These labels match your self-hosted runner settings
     runs-on: [self-hosted, windows, deploy]
 
     steps:
@@ -48,6 +52,7 @@ jobs:
           name: test-results
 
       - name: Display test results
+        # Uses 'type' because this is running on Windows
         run: type test-results.txt
 
       - name: Setup Node.js
@@ -58,7 +63,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # CRITICAL FIX: Use PM2 instead of 'npm start'
       - name: Deploy application
         run: |
-          echo Starting application deployment...
-          npm start
+          echo "Installing PM2 for background process management..."
+          npm install -g pm2
+
+          echo "Stopping old instances to avoid port conflicts..."
+          # This command stops the app if it's already running, but doesn't fail if it's not
+          pm2 stop "ostad-app" || echo "No previous instance running."
+
+          echo "Starting application in the background..."
+          # This starts the server and immediately exits, allowing the job to finish Green
+          pm2 start src/server.js --name "ostad-app"
+
+          echo "Deployment Complete!"
